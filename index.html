@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap');
+
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background-color: #f8f3e7;
+            color: #333;
+        }
+
+        h1 {
+            color: #a52a2a;
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+        }
+
+        button {
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+        }
+
+        #homePage,
+        #resultPage,
+        #coinFlipPage {
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .coin {
+            width: 100px;
+            height: 100px;
+            background-color: #FFD700;
+            border-radius: 50%;
+            margin: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            perspective: 1000px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease;
+        }
+
+        .coin-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .coin-front {
+            background-color: #FFD700;
+        }
+
+        .coin-back {
+            background-color: #FFD700;
+            transform: rotateY(180deg);
+        }
+
+        @keyframes flip {
+            0% {
+                transform: rotateY(0deg);
+            }
+            25% {
+                transform: rotateY(90deg);
+            }
+            50% {
+                transform: rotateY(180deg);
+            }
+            75% {
+                transform: rotateY(270deg);
+            }
+            100% {
+                transform: rotateY(360deg);
+            }
+        }
+    </style>
+    <title>算卦网页</title>
+</head>
+
+<body class="flex flex-col items-center justify-center h-screen">
+    <div id="homePage" class="text-center p-8">
+        <h1>算卦方式</h1>
+        <ul class="list-disc list-inside space-y-4">
+            <li><button id="divinationButton" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-full focus:outline-none focus:shadow-outline">六十四卦算卦</button></li>
+            <li><button id="liuliuRenButton" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-full focus:outline-none focus:shadow-outline">小六壬算卦</button></li>
+        </ul>
+    </div>
+    <div id="coinFlipPage" class="hidden text-center p-8">
+        <h2>抛硬币算卦</h2>
+        <p>请点击按钮抛硬币，共抛 6 次，每次抛 3 个硬币。</p>
+        <div id="coinContainer" class="flex justify-center mb-4"></div>
+        <button id="flipCoinsButton" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-full focus:outline-none focus:shadow-outline">抛硬币</button>
+        <div id="coinResults" class="mt-4"></div>
+    </div>
+    <div id="resultPage" class="hidden text-center p-8">
+        <div id="resultDiv" class="mt-6">
+            <!-- 结果将显示在这里 -->
+        </div>
+        <div class="space-y-4 mt-8">
+            <button id="searchButton" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-full focus:outline-none focus:shadow-outline">
+                搜索主卦内容
+            </button>
+            <button id="backToHomeButton" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-full focus:outline-none focus:shadow-outline">返回主页</button>
+        </div>
+    </div>
+    <script>
+        const homePage = document.getElementById('homePage');
+        const coinFlipPage = document.getElementById('coinFlipPage');
+        const resultPage = document.getElementById('resultPage');
+        const divinationButton = document.getElementById('divinationButton');
+        const liuliuRenButton = document.getElementById('liuliuRenButton');
+        const flipCoinsButton = document.getElementById('flipCoinsButton');
+        const coinContainer = document.getElementById('coinContainer');
+        const coinResults = document.getElementById('coinResults');
+        const resultDiv = document.getElementById('resultDiv');
+        const backToHomeButton = document.getElementById('backToHomeButton');
+
+        let flipCount = 0;
+        let allResults = [];
+
+        divinationButton.addEventListener('click', () => {
+            homePage.classList.add('hidden');
+            coinFlipPage.classList.remove('hidden');
+            flipCount = 0;
+            allResults = [];
+            coinResults.innerHTML = '';
+        });
+
+        liuliuRenButton.addEventListener('click', () => {
+            const states = {
+                "大安": "大吉之象，凡事皆顺，百事可为，诸般吉庆。",
+                "留连": "运气欠佳，凡事迟缓，需耐心等待，不可急于求成。",
+                "速喜": "有喜事来临，办事迅速，百事可成，且有意外之喜。",
+                "赤口": "多有是非、官非、口舌之争，做事宜谨慎，不可莽撞。",
+                "小吉": "小吉之象，凡事较顺，有贵人相助，可谋事。",
+                "空亡": "诸事不利，谋事难成，宜守旧，不可妄动。"
+            };
+
+            const monthDict = {};
+            for (let i = 1; i <= 13; i++) {
+                monthDict[i] = i;
+            }
+
+            const dayDict = {};
+            for (let i = 1; i <= 32; i++) {
+                dayDict[i] = i;
+            }
+
+            const hourDict = {
+                23: 1, 0: 1, 1: 2, 2: 2, 3: 3, 4: 3,
+                5: 4, 6: 4, 7: 5, 8: 5, 9: 6, 10: 6,
+                11: 7, 12: 7, 13: 8, 14: 8, 15: 9, 16: 9,
+                17: 10, 18: 10, 19: 11, 20: 11, 21: 12, 22: 12
+            };
+
+            const stateOrder = ["大安", "留连", "速喜", "赤口", "小吉", "空亡"];
+
+            function liuliuRen(month, day, hour) {
+                let num = (monthDict[month] + dayDict[day] + hourDict[hour]) % 6;
+                if (num === 0) {
+                    num = 6;
+                }
+                return stateOrder[num - 1];
+            }
+
+            const month = new Date().getMonth() + 1;
+            const day = new Date().getDate();
+            const hour = new Date().getHours();
+            const result = liuliuRen(month, day, hour);
+
+            resultDiv.innerHTML = `
+                <p class="text-lg font-medium">当前时间（${month}月${day}日${hour}时）的小六壬结果是：${result}</p>
+                <p class="text-xl font-bold text-blue-600">含义：${states[result]}</p>
+            `;
+
+            homePage.classList.add('hidden');
+            resultPage.classList.remove('hidden');
+        });
+
+        flipCoinsButton.addEventListener('click', () => {
+            if (flipCount >= 6) {
+                return;
+            }
+
+            coinContainer.innerHTML = '';
+            let currentResults = [];
+
+            for (let i = 0; i < 3; i++) {
+                const coin = document.createElement('div');
+                coin.classList.add('coin');
+
+                const coinFront = document.createElement('div');
+                coinFront.classList.add('coin-face', 'coin-front');
+                coinFront.textContent = '正';
+
+                const coinBack = document.createElement('div');
+                coinBack.classList.add('coin-face', 'coin-back');
+                coinBack.textContent = '反';
+
+                coin.appendChild(coinFront);
+                coin.appendChild(coinBack);
+
+                coinContainer.appendChild(coin);
+
+                const randomNumber = Math.round(Math.random());
+                currentResults.push(randomNumber);
+
+                coin.style.animation = 'flip 1s ease-in-out';
+
+                setTimeout(() => {
+                    if (randomNumber === 1) {
+                        coin.style.transform = 'rotateY(0deg)';
+                    } else {
+                        coin.style.transform = 'rotateY(180deg)';
+                    }
+                }, 1000);
+            }
+
+            allResults.push(currentResults);
+            flipCount++;
+
+            coinResults.innerHTML += `<p>第 ${flipCount} 次抛硬币结果：${currentResults.join(' ')} </p>`;
+
+            if (flipCount === 6) {
+                const results = [];
+                const main_gua = [];
+                const changing_gua = [];
+
+                for (let i = 0; i < 6; i++) {
+                    const randomNumbers = allResults[i];
+                    const countOfOnes = randomNumbers.filter(num => num === 1).length;
+                    let result;
+                    if (countOfOnes === 0) {
+                        result = "老阳";
+                    } else if (countOfOnes === 1) {
+                        result = "阴";
+                    } else if (countOfOnes === 2) {
+                        result = "阳";
+                    } else if (countOfOnes === 3) {
+                        result = "老阴";
+                    }
+                    results.push(result);
+
+                    if (result === "老阴") {
+                        main_gua.push("阴");
+                        changing_gua.push("阳");
+                    } else if (result === "老阳") {
+                        main_gua.push("阳");
+                        changing_gua.push("阴");
+                    } else {
+                        main_gua.push(result);
+                        changing_gua.push(result);
+                    }
+                }
+
+                const firstMainGua = main_gua.slice(0, 3).map(line => line === '阴' ? 1 : 2);
+                const lastMainGua = main_gua.slice(3).map(line => line === '阴' ? 1 : 2);
+                const firstChangingGua = changing_gua.slice(0, 3).map(line => line === '阴' ? 1 : 2);
+                const lastChangingGua = changing_gua.slice(3).map(line => line === '阴' ? 1 : 2);
+
+                const getGuaNumber = (arr) => parseInt(arr.join(''));
+                const firstMainGuaNumber = getGuaNumber(firstMainGua);
+                const lastMainGuaNumber = getGuaNumber(lastMainGua);
+                const firstChangingGuaNumber = getGuaNumber(firstChangingGua);
+                const lastChangingGuaNumber = getGuaNumber(lastChangingGua);
+
+                const guaDict = {
+                    111: "地",
+                    211: "雷",
+                    221: "泽",
+                    122: "风",
+                    121: "水",
+                    112: "山",
+                    212: "火",
+                    222: "天"
+                };
+
+                const mainGuaCombined = guaDict[lastMainGuaNumber] + guaDict[firstMainGuaNumber];
+                const changingGuaCombined = guaDict[lastChangingGuaNumber] + guaDict[firstChangingGuaNumber];
+
+                const data = {
+                    "天天": "乾为天",
+                    "泽天": "泽天夬",
+                    "火天": "火天大有",
+                    "雷天": "雷天大壮",
+                    "风天": "风天小畜",
+                    "水天": "水天需",
+                    "山天": "山天大畜",
+                    "地天": "地天泰",
+                    "天泽": "天泽履",
+                    "泽泽": "兑为泽",
+                    "火泽": "火泽睽",
+                    "雷泽": "雷泽归妹",
+                    "风泽": "风泽中孚",
+                    "水泽": "水泽节",
+                    "山泽": "山泽损",
+                    "地泽": "地泽临",
+                    "天火": "天火同人",
+                    "泽火": "泽火革",
+                    "火火": "离为火",
+                    "雷火": "雷火丰",
+                    "风火": "风火家人",
+                    "水火": "水火既济",
+                    "山火": "山火贲",
+                    "地火": "地火明夷",
+                    "天雷": "天雷无妄",
+                    "泽雷": "泽雷随",
+                    "火雷": "火雷噬嗑",
+                    "雷雷": "震为雷",
+                    "风雷": "风雷益",
+                    "水雷": "水雷屯",
+                    "山雷": "山雷颐",
+                    "地雷": "地雷复",
+                    "天风": "天风姤",
+                    "泽风": "泽风大过",
+                    "火风": "火风鼎",
+                    "雷风": "雷风恒",
+                    "风风": "巽为风",
+                    "水风": "水风井",
+                    "山风": "山风蛊",
+                    "地风": "地风升",
+                    "天水": "天水讼",
+                    "泽水": "泽水困",
+                    "火水": "火水未济",
+                    "雷水": "雷水解",
+                    "风水": "风水涣",
+                    "水水": "坎为水",
+                    "山水": "山水蒙",
+                    "地水": "地水师",
+                    "天山": "天山遁",
+                    "泽山": "泽山咸",
+                    "火山": "火山旅",
+                    "雷山": "雷山小过",
+                    "风山": "风山渐",
+                    "水山": "山水蹇",
+                    "山山": "艮为山",
+                    "地山": "地山谦",
+                    "天地": "天地否",
+                    "泽地": "泽地萃",
+                    "火地": "火地晋",
+                    "雷地": "雷地豫",
+                    "风地": "风地观",
+                    "水地": "水地比",
+                    "山地": "山地剥",
+                    "地地": "坤为地"
+                };
+
+                const mainGuaFinal = data[mainGuaCombined];
+                const changingGuaFinal = data[changingGuaCombined];
+
+                resultDiv.innerHTML = `
+                    <p class="text-lg font-medium">Results: ${results.join(', ')}</p>
+                    <p class="text-xl font-bold text-red-600">主卦: ${mainGuaFinal}</p>
+                    <p class="text-xl font-bold text-green-600">变卦: ${changingGuaFinal}</p>
+                `;
+
+                const searchButton = document.createElement('button');
+                searchButton.textContent = '搜索主卦内容';
+                searchButton.classList.add('bg-green-600', 'hover:bg-green-700', 'text-white', 'font-bold', 'py-3', 'px-6', 'rounded-full', 'focus:outline-none', 'focus:shadow-outline', 'mt-4');
+                searchButton.addEventListener('click', () => {
+                    const searchQuery = encodeURIComponent(mainGuaFinal);
+                    window.open(`https://baike.baidu.com/item/${searchQuery}`, '_blank');
+                });
+                resultDiv.appendChild(searchButton);
+
+                coinFlipPage.classList.add('hidden');
+                resultPage.classList.remove('hidden');
+            }
+        });
+
+        backToHomeButton.addEventListener('click', () => {
+            homePage.classList.remove('hidden');
+            resultPage.classList.add('hidden');
+            coinFlipPage.classList.add('hidden');
+        });
+    </script>
+</body>
+
+</html>
+    
